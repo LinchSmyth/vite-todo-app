@@ -1,0 +1,24 @@
+div.container
+  div.columns
+    div.col-mx-auto.col-4.col-md-8.col-sm-12
+      div.xpt-2
+        h1.text-center TODO APPLICATION
+      div.xpt-2
+        = form_with(model: Item.new, html: { "data-controller": "form", "data-action": "form#submit" }) do |f|
+          div.input-group
+            label.form-checkbox
+              = f.check_box(:done)
+              i.form-icon
+            = f.text_field(:content, class: "form-input")
+            button.btn.btn-primary.input-group-btn[type="submit"] Add
+      div.xpt-1
+        div.card
+          div.card-body
+            ul
+              - items.each do |item|
+                li
+                  - if item.done?
+                    del = item.content
+                  - else
+                    span = item.content
+
