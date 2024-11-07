@@ -11,3 +11,6 @@ html
     = vite_javascript_tag "application"
   body
     = yield
+    javascript:
+      console.log("you should see 'foo' printed out twice, if bundling worked")
+      foo()
