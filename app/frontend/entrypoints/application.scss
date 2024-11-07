@@ -1,4 +1,5 @@
 @import "spectre.css";
+@import "spectre.css/dist/spectre-icons.css";
 
 $base-spacer-value: 0.5rem;
 
@@ -30,9 +31,15 @@ $base-spacer-value: 0.5rem;
 
 ul {
   li {
+    margin: 0;
+    padding: $base-spacer-value 0;
     list-style: none;
     &:not(:last-child) {
       border-bottom: 1px solid #dadee4;
     }
   }
+}
+
+.column-align-center {
+  align-self: center;
 }

@@ -1,0 +1,19 @@
+li[data-controller="item"]
+  div.columns
+    div.column.col-auto
+      = form_with(model: item) do |f|
+        label.form-checkbox
+          = f.check_box(:done, "data-action" => "item#update")
+          i.form-icon
+    div.column.column-align-center
+      - if item.done?
+        del = item.content
+      - else
+        span = item.content
+    div.column.col-auto
+      = button_to(item,
+                  method: :delete,
+                  class: "btn btn-action btn-error",
+                  "data-item-target": "removeButton",
+                  form: { "data-action": "item#remove" }) do
+        i.icon.icon-delete
