@@ -8,7 +8,7 @@ import { build } from 'esbuild'
 const CustomPluginExample = () => {
   let config
 
-  const sourceCode = 'console.log("Our custom plugin in action!")'
+  const sourceCode = 'console.log("%cOur custom plugin in action!", "background:#b6ff97; color:#1a5700;")'
 
   return [
     {
@@ -75,6 +75,18 @@ const ProcessLegacyCode = (outputFileName, files) => {
       config = viteConfig
     },
     configureServer (server) {
+      const reloadPage = () => {
+        server.ws.send({ type: 'full-reload', path: '*' })
+      }
+
+      fileWatcher = chokidar
+        .watch(files, {
+          ignoreInitial: true // Don't trigger chokidar on instantiation.
+        })
+        .on('add', reloadPage)
+        .on('change', reloadPage)
+        .on('unlink', reloadPage)
+
       server.middlewares.use(async (req, res, next) => {
         if (req.url.includes(`vite-dev/entrypoints/${outputFileName}`)) {
           let code = ''
@@ -119,6 +131,9 @@ const ProcessLegacyCode = (outputFileName, files) => {
         type: 'asset',
         source: code,
       })
+    },
+    async closeBundle() {
+      await fileWatcher.close();
     },
   }
 }

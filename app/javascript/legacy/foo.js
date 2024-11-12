@@ -1,5 +1,5 @@
 import "../misc/importCheck"
 
 function foo() {
-  console.log("Foo")
+  console.log("%cFoo","background:#ff979c; color: #570004;")
 }
