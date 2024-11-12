@@ -2,25 +2,38 @@ import { defineConfig } from 'vite'
 import RubyPlugin from 'vite-plugin-ruby'
 import StimulusHMR from 'vite-plugin-stimulus-hmr'
 import { rollup } from 'rollup'
+import chokidar from 'chokidar'
+import { build } from 'esbuild'
 
 const CustomPluginExample = () => {
-  let config;
+  let config
+
+  const sourceCode = 'console.log("Our custom plugin in action!")'
 
   return [
     {
       name: 'custom-plugin-example:build',
-      apply: 'build',
-      configResolved(viteConfig) {
+      configResolved (viteConfig) {
         config = viteConfig
       },
-      generateBundle(_options) {
+      configureServer (server) {
+        server.middlewares.use(async (req, res, next) => {
+          if (req.url.includes(`vite-dev/entrypoints/custom_plugin_example.js`)) {
+            res.statusCode = 200
+            res.end(sourceCode)
+          } else {
+            next()
+          }
+        })
+      },
+      generateBundle (_options) {
         if (!config.build.manifest) { return }
 
         this.emitFile({
           fileName: 'assets/custom.js',
           name: 'entrypoints/custom_plugin_example.js',
           type: 'asset',
-          source: 'console.log("Our custom plugin in action!")',
+          source: sourceCode,
         })
       },
     }
@@ -53,36 +66,61 @@ const bundle = async (inputs) => {
  * @constructor
  */
 const ProcessLegacyCode = (outputFileName, files) => {
-  let config;
+  let config
+  let fileWatcher
 
-  return [
-    {
-      name: 'process-legacy-code:build',
-      apply: 'build',
-      configResolved(viteConfig) {
-        config = viteConfig
-      },
-      async generateBundle(_options) {
-        if (!config.build.manifest) { return }
+  return {
+    name: 'process-legacy-code',
+    configResolved (viteConfig) {
+      config = viteConfig
+    },
+    configureServer (server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url.includes(`vite-dev/entrypoints/${outputFileName}`)) {
+          let code = ''
 
-        const chunks = await bundle(files)
+          let result = await build({
+            entryPoints: files,
+            sourcemap: false,
+            minify: false,
+            write: false,
+            bundle: true,
+            treeShaking: false,
+            outdir: 'x',
+            format: 'esm'
+          })
 
-        let code = '';
-        for (const chunk of chunks) {
-          code += chunk.code
+          for (let out of result.outputFiles) {
+            code += out.text
+          }
+
+          res.statusCode = 200
+          res.end(code)
+        } else {
+          next()
         }
+      })
+    },
+    async generateBundle (_options) {
+      if (!config.build.manifest) { return }
 
-        // TODO: compute code hash
+      const chunks = await bundle(files)
 
-        this.emitFile({
-          fileName: `assets/${outputFileName}`,
-          name: `entrypoints/${outputFileName}`,
-          type: 'asset',
-          source: code,
-        })
-      },
-    }
-  ]
+      let code = ''
+      for (const chunk of chunks) {
+        code += chunk.code
+      }
+
+      // TODO: compute code hash
+
+      this.emitFile({
+        fileName: `assets/${outputFileName}`,
+        name: `entrypoints/${outputFileName}`,
+        type: 'asset',
+        source: code,
+      })
+    },
+  }
 }
 
 export default defineConfig({
