@@ -10,8 +10,9 @@ html
     = vite_stylesheet_tag "application.scss"
     = vite_javascript_tag "application"
     = vite_javascript_tag "custom_plugin_example"
+    = vite_javascript_tag "legacy", type: nil
   body
     = yield
     javascript:
-      console.log("you should see 'foo' printed out twice, if bundling worked")
+      console.log("you should see 'Foo' printed out twice, if bundling worked")
       foo()
