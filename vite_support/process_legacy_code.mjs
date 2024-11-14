@@ -46,10 +46,10 @@ const ProcessLegacyCode = (outputFileName, files) => {
           return next()
         }
 
-        const result = await bundle(outdirServe)
+        const { outputFiles } = await bundle(outdirServe)
 
         let code = ''
-        for (let out of result.outputFiles) {
+        for (let out of outputFiles) {
           code += out.text
         }
 
@@ -60,9 +60,9 @@ const ProcessLegacyCode = (outputFileName, files) => {
     async generateBundle (_options) {
       if (!config.build.manifest) { return }
 
-      const result = await bundle(outdir)
+      const { outputFiles } = await bundle(outdir)
       const files = {}
-      for (let file of result.outputFiles) {
+      for (let file of outputFiles) {
         files[file.path] = file.text
       }
 
