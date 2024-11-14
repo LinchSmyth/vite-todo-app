@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite'
 import RubyPlugin from 'vite-plugin-ruby'
 import StimulusHMR from 'vite-plugin-stimulus-hmr'
-import { rollup } from 'rollup'
 import chokidar from 'chokidar'
 import { build } from 'esbuild'
 import { getHash } from './hash.mjs'
+import { minify } from 'terser'
 
 const CustomPluginExample = () => {
   let config
@@ -41,27 +41,7 @@ const CustomPluginExample = () => {
   ]
 }
 
-// TODO: use esbuild for both dev and prod bundles?
 // TODO: caching?
-// TODO: try to parallelize bundling
-// TODO: use terser for minification
-const bundle = async (inputs) => {
-  let output = []
-
-  for (const input of inputs) {
-    const bundle = await rollup({
-      input,
-      treeshake: false
-    })
-    const bundled = await bundle.generate({
-      format: 'es'
-    })
-    output = output.concat(bundled.output)
-  }
-
-  return output
-}
-
 /**
  * @param outputFileName {String}
  * @param files {Array<String>}
@@ -69,6 +49,20 @@ const bundle = async (inputs) => {
  * @constructor
  */
 const ProcessLegacyCode = (outputFileName, files) => {
+  const outdir = `./${outputFileName}`
+  const outdirServe = `./${outputFileName}-dev`
+
+  const bundle = (outdir) => build({
+    entryPoints: files,
+    outdir: outdir,
+    bundle: true,
+    sourcemap: false,
+    minify: false,
+    write: false,
+    treeShaking: false,
+    format: 'esm'
+  })
+
   let config
   let fileWatcher
 
@@ -95,18 +89,9 @@ const ProcessLegacyCode = (outputFileName, files) => {
           return next()
         }
 
-        let code = ''
-        let result = await build({
-          entryPoints: files,
-          sourcemap: false,
-          minify: false,
-          write: false,
-          bundle: true,
-          treeShaking: false,
-          outdir: 'x',
-          format: 'esm'
-        })
+        const result = await bundle(outdirServe)
 
+        let code = ''
         for (let out of result.outputFiles) {
           code += out.text
         }
@@ -118,13 +103,13 @@ const ProcessLegacyCode = (outputFileName, files) => {
     async generateBundle (_options) {
       if (!config.build.manifest) { return }
 
-      const chunks = await bundle(files)
-
-      let code = ''
-      for (const chunk of chunks) {
-        code += chunk.code
+      const result = await bundle(outdir)
+      const files = {}
+      for (let file of result.outputFiles) {
+        files[file.path] = file.text
       }
 
+      const { code } = await minify(files)
       const hash = getHash(code)
 
       this.emitFile({
