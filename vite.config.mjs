@@ -4,6 +4,7 @@ import StimulusHMR from 'vite-plugin-stimulus-hmr'
 import { rollup } from 'rollup'
 import chokidar from 'chokidar'
 import { build } from 'esbuild'
+import { getHash } from './hash.mjs'
 
 const CustomPluginExample = () => {
   let config
@@ -18,19 +19,19 @@ const CustomPluginExample = () => {
       },
       configureServer (server) {
         server.middlewares.use(async (req, res, next) => {
-          if (req.url.includes(`vite-dev/entrypoints/custom_plugin_example.js`)) {
-            res.statusCode = 200
-            res.end(sourceCode)
-          } else {
-            next()
+          if (!req.url.includes(`vite-dev/entrypoints/custom_plugin_example.js`)) {
+            return next()
           }
+
+          res.statusCode = 200
+          res.end(sourceCode)
         })
       },
       generateBundle (_options) {
         if (!config.build.manifest) { return }
 
         this.emitFile({
-          fileName: 'assets/custom.js',
+          fileName: `assets/custom-${getHash(sourceCode)}.js`,
           name: 'entrypoints/custom_plugin_example.js',
           type: 'asset',
           source: sourceCode,
@@ -40,6 +41,8 @@ const CustomPluginExample = () => {
   ]
 }
 
+// TODO: use esbuild for both dev and prod bundles?
+// TODO: caching?
 // TODO: try to parallelize bundling
 // TODO: use terser for minification
 const bundle = async (inputs) => {
@@ -88,29 +91,28 @@ const ProcessLegacyCode = (outputFileName, files) => {
         .on('unlink', reloadPage)
 
       server.middlewares.use(async (req, res, next) => {
-        if (req.url.includes(`vite-dev/entrypoints/${outputFileName}`)) {
-          let code = ''
-
-          let result = await build({
-            entryPoints: files,
-            sourcemap: false,
-            minify: false,
-            write: false,
-            bundle: true,
-            treeShaking: false,
-            outdir: 'x',
-            format: 'esm'
-          })
-
-          for (let out of result.outputFiles) {
-            code += out.text
-          }
-
-          res.statusCode = 200
-          res.end(code)
-        } else {
-          next()
+        if (!req.url.includes(`vite-dev/entrypoints/${outputFileName}.js`)) {
+          return next()
         }
+
+        let code = ''
+        let result = await build({
+          entryPoints: files,
+          sourcemap: false,
+          minify: false,
+          write: false,
+          bundle: true,
+          treeShaking: false,
+          outdir: 'x',
+          format: 'esm'
+        })
+
+        for (let out of result.outputFiles) {
+          code += out.text
+        }
+
+        res.statusCode = 200
+        res.end(code)
       })
     },
     async generateBundle (_options) {
@@ -123,17 +125,17 @@ const ProcessLegacyCode = (outputFileName, files) => {
         code += chunk.code
       }
 
-      // TODO: compute code hash
+      const hash = getHash(code)
 
       this.emitFile({
-        fileName: `assets/${outputFileName}`,
-        name: `entrypoints/${outputFileName}`,
+        fileName: `assets/${outputFileName}-${hash}.js`,
+        name: `entrypoints/${outputFileName}.js`,
         type: 'asset',
         source: code,
       })
     },
-    async closeBundle() {
-      await fileWatcher.close();
+    async closeBundle () {
+      await fileWatcher?.close()
     },
   }
 }
@@ -143,7 +145,7 @@ export default defineConfig({
     RubyPlugin(),
     StimulusHMR(),
     CustomPluginExample(),
-    ProcessLegacyCode('legacy.js', [
+    ProcessLegacyCode('legacy', [
       './app/javascript/legacy/bar.js',
       './app/javascript/legacy/foo.js',
     ]),
