@@ -1,0 +1,23 @@
+version: '3.7'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./config/docker/app.Dockerfile
+    environment:
+      DB_NAME_PREFIX: docker
+      VITE_RUBY_HOST: vite
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/docker/app
+
+  vite:
+    build:
+      context: .
+      dockerfile: ./config/docker/vite.Dockerfile
+    ports:
+      - '3036:3036'
+      - '3037:3037'
+    volumes:
+      - .:/docker/app
