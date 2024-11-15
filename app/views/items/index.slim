@@ -9,7 +9,7 @@ div.container
             label.form-checkbox
               = f.check_box(:done)
               i.form-icon
-            = f.text_field(:content, class: "form-input", autocomplete: "off", "data-form-target": "input")
+            = f.text_field(:content, class: "form-input", autocomplete: "off", placeholder: "Task Name", "data-form-target": "input")
             button.btn.btn-primary.input-group-btn[type="submit" data-form-target="action"] Add
       div.xpt-1
         div.card
